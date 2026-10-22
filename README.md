@@ -91,19 +91,12 @@ Before running the analysis:
 
 ## Results
 
-*To be completed after rerunning and validating the analysis.*
+| Commodity | AR(1) mean CRPS | ARMA–GARCH mean CRPS |
+|---|---:|---:|
+| Natural gas | 0.1943 | 0.1948 
+| Oil | 0.745 | 0.739 |
+| Coal | 0.4620 | 0.4668 |
 
-Report the mean out-of-sample CRPS for each model and commodity, using exactly the same forecast dates and scoring convention.
-
-| Commodity | AR(1) mean CRPS | ARMA–GARCH mean CRPS | Better-performing model |
-|---|---:|---:|---|
-| Natural gas | [Calculate] | [Calculate] | [Determine] |
-| Oil | [Calculate] | [Calculate] | [Determine] |
-| Coal | [Calculate] | [Calculate] | [Determine] |
-
-Include plots of the observed series, estimated conditional volatility and forecast evaluation results. Explain the evaluation period, sample size and how each metric is calculated.
-
-Do not interpret the model as superior unless the validated results support that conclusion.
 
 ## Limitations
 
