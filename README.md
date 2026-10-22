@@ -54,12 +54,9 @@ These components are intended to explore dependence between the commodity series
 ## Data
 
 - **Series:** Natural gas, oil and coal.
-- **Observation frequency:** [Specify frequency.]
-- **Sample period:** [Add start and end dates.]
-- **Price units:** [Specify units and currencies, where applicable.]
-- **Data source:** [Add the original provider and dataset link.]
-- **Transformations:** [Document returns, differences, scaling, missing-value treatment and any other preprocessing actually applied.]
-
+- **Observation frequency:** Daily
+- **Sample period:** From 2010-03-16 to 2020-10-27
+  
 The analysis uses an initial estimation sample of 2,500 observations and evaluates forecasts over a subsequent 200-observation period in the current scripts. Confirm that the available data and final model inputs match these settings.
 
 ## Repository structure
@@ -111,8 +108,3 @@ Before running the analysis:
 
 This project demonstrates an applied econometric workflow combining time-series model selection, conditional volatility estimation, probabilistic forecasting and forecast evaluation in R. Its main empirical conclusions will be drawn from validated out-of-sample results rather than assumed in advance.
 
-## Author
-
-[Your name or GitHub profile]
-
-[Optional: link to CV, portfolio or contact page]
