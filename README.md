@@ -1,110 +1,118 @@
-# Energy Commodity Price Modelling: ARMA–GARCH, Forecast Evaluation and Copulas
+# Energy Commodity Price Modelling: ARMA–GARCH, Probabilistic Forecast Evaluation and Copulas
 
-## Overview
+Time-series econometrics in R for natural gas, oil and coal. The project fits ARMA–GARCH models, produces rolling one-step-ahead probabilistic forecasts, benchmarks them against an AR(1) model with the Continuous Ranked Probability Score (CRPS), backtests 5% quantile forecasts, and models cross-commodity dependence with copulas evaluated by the energy score.
 
-This project applies time-series econometrics in R to the modelling and probabilistic forecasting of energy commodity prices, focusing on natural gas, oil and coal.
+![R](https://img.shields.io/badge/language-R-276DC3)
+![Topic](https://img.shields.io/badge/topic-volatility%20modelling%20%26%20probabilistic%20forecasting-blue)
 
-The analysis explores autoregressive moving-average models with generalized autoregressive conditional heteroskedasticity (ARMA–GARCH), compares predictive distributions with an AR(1) benchmark, and investigates dependence modelling using copulas.
+---
 
-**Research question:** How effectively can ARMA–GARCH models capture and forecast energy commodity price dynamics, and how does their probabilistic forecast performance compare with a simpler AR(1) benchmark?
+## Research question
 
-## Economic motivation
+> How well do ARMA–GARCH models capture and forecast energy commodity price dynamics, and how does their probabilistic forecast performance compare with a simple AR(1) benchmark?
 
-Energy commodity prices influence production costs, household expenditure and inflation. Their volatility creates uncertainty for firms, policymakers and market participants.
+Energy prices feed into production costs, household spending and inflation, and their volatility creates uncertainty for firms and policymakers. Good in-sample fit does not guarantee good out-of-sample forecasts, so the project pairs model estimation with out-of-sample forecast evaluation.
 
-Modelling time-varying volatility and evaluating predictive distributions can help assess how well statistical models represent this uncertainty. However, good in-sample fit does not necessarily imply good out-of-sample forecasting performance.
+## Pipeline
 
-This project therefore combines econometric model estimation with forecast evaluation.
+| Step | Script | What it does |
+|------|--------|--------------|
+| 1 | `1_fit_armagarch_cond_var.R` | Selects the ARMA order with `auto.arima()` (max p = 2, q = 2, stationary, AIC). Grid-searches GARCH(ARCH 1–2, GARCH 1–2) by AIC. Fits the final sGARCH model with normal innovations on the first 2,500 observations and extracts coefficients and conditional variances. |
+| 2 | `2_forecast_armagarch.R` | Rolling one-step-ahead forecasts with `ugarchroll()` (recursive window, refit at every step, start at observation 2,500, 200 forecasts). Stores forecast mean and sigma, computes 5% VaR, and draws ridge-density plots of the predictive distributions. |
+| 3 | `3_CRPS_AR_ARMAGARCH.R` | Refits an AR(1) benchmark each step, then computes the closed-form Gaussian CRPS for both models over the 200 forecast days and plots the results. |
+| 4 | `4_quantile.R` | Extracts the 5% forecast quantiles and computes the share of realized values falling below them (a coverage backtest). |
+| 5 | `5_pit_trs.R` | Standardizes the ARMA–GARCH residuals and applies the probability integral transform (`pobs`) to get pseudo-observations. |
+| 6 | `6_fit_copulas.R` | Fits three-dimensional copulas by maximum likelihood: Student-t, Gaussian, and an independence-type copula (`gumbelCopula` with the independence option). |
+| 7 | `7_energy_score.R` | Simulates joint forecast distributions from each copula (1,000 draws per day), pushes them through the normal marginals, and scores them with the energy score over the 200 forecast days. |
 
-## Research objectives
+## Methods in brief
 
-1. Estimate ARMA–GARCH specifications for natural gas, oil and coal series.
-2. Select candidate model orders using the Akaike Information Criterion (AIC).
-3. Generate one-step-ahead probabilistic forecasts.
-4. Compare ARMA–GARCH forecasts against an AR(1) benchmark using the Continuous Ranked Probability Score (CRPS).
-5. Explore probability integral transforms and copula-based dependence modelling.
-6. Evaluate the strengths and limitations of the modelling approach.
-
-## Methods
-
-### 1. ARMA–GARCH estimation
-
-The mean equation is modelled using an ARMA specification, while a GARCH process captures time-varying conditional variance.
-
-The current estimation code selects ARMA orders using `auto.arima()` and compares candidate ARCH/GARCH orders using AIC. The implemented variance specification uses a standard GARCH model with normally distributed innovations.
-
-### 2. Forecasting
-
-The forecasting script uses rolling one-step-ahead forecasts with a recursive estimation window. The code begins the forecast evaluation after an initial estimation sample of 2,500 observations.
-
-Forecast distributions are represented by their estimated means and standard deviations.
-
-### 3. Benchmark comparison
-
-An AR(1) model provides a simpler benchmark. The project calculates CRPS to compare probabilistic forecasts.
-
-CRPS evaluates both the calibration and concentration of a predictive distribution; lower scores indicate better performance when the same scoring convention and evaluation observations are used.
-
-### 4. Dependence modelling
-
-Additional scripts investigate probability integral transforms and fit alternative copula specifications, including Gaussian, Student-t and Gumbel copulas.
-
-These components are intended to explore dependence between the commodity series. Their final interpretation should be based on verified diagnostics and comparative results.
+- **Mean equation:** ARMA(p, q) with p, q ≤ 2, chosen by AIC.
+- **Variance equation:** standard GARCH with orders chosen by AIC over a 2×2 grid; Gaussian innovations.
+- **Forecasting:** recursive-window, one-step-ahead, with refitting at every step. Forecast distributions are Normal(μ̂, σ̂).
+- **CRPS:** for a Normal forecast N(μ, σ²) and observation x, the closed form is used. Lower CRPS is better.
+- **Backtesting:** a 5% quantile is extracted from each forecast distribution and compared with realized values.
+- **Dependence:** PIT-transformed standardized residuals are used to fit copulas. The joint forecast is scored with the energy score (`es_sample`).
 
 ## Data
 
-- **Series:** Natural gas, oil and coal.
-- **Observation frequency:** Daily
-- **Sample period:** From 2010-03-16 to 2020-10-27
-  
-The analysis uses an initial estimation sample of 2,500 observations and evaluates forecasts over a subsequent 200-observation period in the current scripts. Confirm that the available data and final model inputs match these settings.
+- **Series:** natural gas, oil, coal
+- **Frequency and period:** daily, 2010-03-16 to 2020-10-27
+- **Split:** first 2,500 observations for the initial estimation window, then 200 one-step-ahead forecasts (2,501 to 2,700)
+- **Expected input:** a data frame named `commodities` with columns `date`, `NGas`, `oil`, `coal`
 
-## Repository structure
-
-| File | Purpose |
-|---|---|
-| `1_fit_armagarch_cond_var.R` | Select candidate orders, estimate ARMA–GARCH models and extract conditional variances. |
-| `2_forecast_armagarch.R` | Generate rolling one-step-ahead forecasts and forecast distributions. |
-| `3_CRPS_AR_ARMAGARCH.R` | Compare ARMA–GARCH and AR(1) forecasts using CRPS. |
-| `4_quantile.R` | Quantile-related analysis; document the exact procedure after reviewing the script. |
-| `5_pit_trs.R` | Probability integral transform analysis; document the exact procedure after reviewing the script. |
-| `6_fit_copulas.R` | Fit candidate copula models to transformed series. |
-| `7_energy_score.R` | Energy-score analysis; document the inputs and evaluation procedure after reviewing the script. |
-| `report.pdf` | Existing project report. |
-
-## Software and reproducibility
-
-The analysis is written in R. The scripts rely on packages for time-series modelling, GARCH estimation, data manipulation, plotting and copula estimation.
-
-Before running the analysis:
-
-1. Install R and the required packages.
-2. Obtain the original dataset and document its source.
-3. Load and prepare the commodity data using the expected column names.
-4. Run the scripts in dependency order, checking that objects created in earlier scripts exist before proceeding.
-5. Save the resulting model summaries, forecast evaluations, tables and figures.
-
-**Important:** The repository currently uses shared objects such as `commodities`, fitted models and transformed series across scripts. A fresh R session may not run the entire workflow without additional setup. Add a dedicated data-loading script and explicit package-loading instructions before describing the workflow as fully reproducible.
+The raw data file is not included in this repository. Add the source and a loading script (see [Reproducibility](#reproducibility)).
 
 ## Results
 
-| Commodity | AR(1) mean CRPS | ARMA–GARCH mean CRPS |
-|---|---:|---:|
-| Natural gas | 0.1943 | 0.1948 
+Mean CRPS over the 200 out-of-sample days (lower is better):
+
+| Commodity | AR(1) | ARMA–GARCH |
+|-----------|------:|-----------:|
+| Natural gas | 0.1943 | 0.1948 |
 | Oil | 0.745 | 0.739 |
 | Coal | 0.4620 | 0.4668 |
 
+**Reading the table:** the two approaches are very close. ARMA–GARCH is marginally better for oil, and AR(1) is marginally better for natural gas and coal. The differences are small, so the extra complexity of the GARCH variance model buys little on this window. A formal test (for example Diebold–Mariano on the CRPS series) would be needed before claiming either model is better.
+
+Full discussion and figures are in [`report.pdf`](report.pdf).
+
+## Repository structure
+
+```
+.
+├── 1_fit_armagarch_cond_var.R
+├── 2_forecast_armagarch.R
+├── 3_CRPS_AR_ARMAGARCH.R
+├── 4_quantile.R
+├── 5_pit_trs.R
+├── 6_fit_copulas.R
+├── 7_energy_score.R
+├── report.pdf
+└── README.md
+```
+
+## Reproducibility
+
+Run the scripts in numeric order in a single R session. Later scripts reuse objects created earlier (`commodities`, `order_*`, `fit_*`, `mod_*`, `pit_trs`, `fit_*_cop`), so they will not run standalone.
+
+Packages used across the scripts:
+
+```r
+install.packages(c(
+  "forecast",       # auto.arima
+  "rugarch",        # ugarchspec, ugarchfit, ugarchroll
+  "tidyverse",      # tibble, tidyr (expand_grid), ggplot2
+  "magrittr",       # %<>%
+  "lubridate",      # date handling
+  "ggridges",       # ridge density plots
+  "copula",         # fitCopula, pobs, rCopula
+  "scoringRules"    # es_sample (energy score)
+))
+```
+
+Before the first script, load the data into `commodities` and attach the libraries above.
 
 ## Limitations
 
-- Forecast performance depends on the sample period, data quality and model assumptions.
-- The current GARCH specification assumes normally distributed innovations; alternative distributions may be worth investigating.
-- Model selection by AIC does not guarantee the best out-of-sample forecast.
-- Forecast comparisons should use consistent observations, horizons and scoring conventions.
-- Dependence estimates and copula conclusions require appropriate diagnostic checks.
-- Statistical associations and forecast performance do not establish causal effects on inflation, production or other economic outcomes.
+- The GARCH specification assumes normally distributed innovations. Student-t or skewed distributions are a natural extension for commodity returns.
+- AIC-based order selection does not guarantee the best out-of-sample forecast.
+- The evaluation window is only 200 days from a single period (2020), which includes unusually volatile markets.
+- Differences in CRPS between the two models are small and untested for significance.
+- Copula marginals are taken as normal, and the copulas are fitted to in-sample standardized residuals.
+- Statistical forecast performance does not establish causal effects on inflation, production or other outcomes.
 
-## Conclusion
+## Possible extensions
 
-This project demonstrates an applied econometric workflow combining time-series model selection, conditional volatility estimation, probabilistic forecasting and forecast evaluation in R. Its main empirical conclusions will be drawn from validated out-of-sample results rather than assumed in advance.
+- Heavier-tailed innovations and asymmetric GARCH variants (EGARCH, GJR)
+- Formal forecast comparison tests and quantile coverage tests (Kupiec, Christoffersen)
+- A single `run_all.R` with a data-loading step and a pinned package list (for example with `renv`)
 
+## Author
+
+**Öcal Kaptan**
+[GitHub](https://github.com/Ocalak) · [LinkedIn](https://linkedin.com/in/ocalkaptan123) · [Portfolio](https://portfolio-ocal.com)
+
+## Disclaimer
+
+For academic and educational purposes only. Nothing here is financial advice.
